@@ -5,13 +5,24 @@
 #include <sstream>
 #include <stdexcept>
 #include <vector>
+
+#if defined(PHASELIMITER_WAV_ONLY)
+#include "bakuage/wav_io.h"
+#else
 #include "sndfile.h"
 #include "bakuage/sndfile_wrapper.h"
+#endif
+
 #include "bakuage/vector_math.h"
 
 namespace phase_limiter {
     template <class Float>
     void SaveFloatWave(const std::vector<Float> &wave, const std::string &filename, int channels = 2, int sample_rate = 44100) {
+#if defined(PHASELIMITER_WAV_ONLY)
+        std::vector<Float> buffer = wave;
+        bakuage::VectorSanitizeInplace<Float>(1e7, buffer.data(), buffer.size());
+        bakuage::WriteWavFloat32(filename, buffer.data(), buffer.size(), channels, sample_rate);
+#else
         bakuage::SndfileWrapper snd_file;
         SF_INFO sfinfo = { 0 };
         std::memset(&sfinfo, 0, sizeof(sfinfo));
@@ -43,10 +54,18 @@ namespace phase_limiter {
             message << "sf_writef_float error: " << size;
             throw std::logic_error(message.str());
         }
+#endif
     }
     
     template <class Float>
     std::vector<Float> LoadFloatWave(const std::string &filename) {
+#if defined(PHASELIMITER_WAV_ONLY)
+        bakuage::WavInfo info;
+        auto buffer = bakuage::ReadWav<Float>(filename, &info);
+        fprintf(stderr, "WAV loaded: %d channels, %d Hz, %d bits, %zu frames.\n",
+                info.channels, info.sample_rate, info.bits_per_sample, info.frames);
+        return buffer;
+#else
         bakuage::SndfileWrapper infile;
         SF_INFO sfinfo = { 0 };
         
@@ -84,6 +103,7 @@ namespace phase_limiter {
         }
         
         return buffer;
+#endif
     }
 }
 

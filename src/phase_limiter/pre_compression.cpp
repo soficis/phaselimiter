@@ -16,7 +16,6 @@
 
 #include "audio_analyzer/peak.h"
 #include "bakuage/loudness_ebu_r128.h"
-#include "bakuage/sndfile_wrapper.h"
 #include "bakuage/compressor_filter.h"
 #include "bakuage/file_utils.h"
 #include "bakuage/utils.h"

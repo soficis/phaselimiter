@@ -84,31 +84,7 @@ PNG_SHA="e804e465d4b109b5ad285a8fb71f0dd3f74f0068f91ce3cdfde618180c174925"
   make install
 )
 
-# 3. libsndfile 1.2.2
-SNDFILE_URL="https://github.com/libsndfile/libsndfile/releases/download/1.2.2/libsndfile-1.2.2.tar.xz"
-SNDFILE_SHA="3799ca9924d3125038880367bf1468e53a1b7e3686a934f098b7e1d286cdb80e"
-(
-  cd "${BUILD_DIR}"
-  fetch_and_verify "${SNDFILE_URL}" "${SNDFILE_SHA}" "libsndfile.tar.xz"
-  tar -xf "libsndfile.tar.xz"
-  mkdir libsndfile-1.2.2/build && cd libsndfile-1.2.2/build
-  cmake .. \
-    -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
-    -DCMAKE_INSTALL_PREFIX="${PREFIX}" \
-    -DCMAKE_BUILD_TYPE=Release \
-    -DBUILD_SHARED_LIBS=OFF \
-    -DBUILD_PROGRAMS=OFF \
-    -DBUILD_EXAMPLES=OFF \
-    -DBUILD_TESTING=OFF \
-    -DENABLE_EXTERNAL_LIBS=OFF \
-    -DENABLE_MPEG=OFF \
-    -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
-    ${CMAKE_EXTRA_FLAGS}
-  cmake --build . -j"${NPROC}"
-  cmake --install .
-)
-
-# 4. oneTBB v2021.13.0
+# 3. oneTBB v2021.13.0
 TBB_URL="https://github.com/oneapi-src/oneTBB/archive/refs/tags/v2021.13.0.tar.gz"
 TBB_SHA="3ad5dd08954b39d113dc5b3f8a8dc6dc1fd5250032b7c491eb07aed5c94133e1"
 (
@@ -129,7 +105,7 @@ TBB_SHA="3ad5dd08954b39d113dc5b3f8a8dc6dc1fd5250032b7c491eb07aed5c94133e1"
   cmake --install .
 )
 
-# 5. Boost 1.84.0
+# 4. Boost 1.84.0
 BOOST_URL="https://github.com/boostorg/boost/releases/download/boost-1.84.0/boost-1.84.0.tar.xz"
 BOOST_SHA="2e64e5d79a738d0fa6fb546c6e5c2bd28f88d268a2a080546f74e5ff98f29d0e"
 (
@@ -150,7 +126,7 @@ BOOST_SHA="2e64e5d79a738d0fa6fb546c6e5c2bd28f88d268a2a080546f74e5ff98f29d0e"
     install
 )
 
-# 6. Armadillo 12.8.2 (header-only)
+# 5. Armadillo 12.8.2 (header-only)
 ARMA_URL="https://sourceforge.net/projects/arma/files/armadillo-12.8.2.tar.xz"
 ARMA_SHA="03b62f8c09e4f5d74643b478520741b8e27b55e7e4525978fcae2f5d791ac3bf"
 (

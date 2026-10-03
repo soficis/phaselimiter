@@ -37,6 +37,7 @@ jobs:
             -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
             -DCMAKE_BUILD_TYPE=Release \
             -DPHASELIMITER_STATIC_DEPS=ON \
+            -DPHASELIMITER_WAV_ONLY=ON \
             -DPHASELIMITER_DEPS_PREFIX=/opt/deps \
             -DDISABLE_TARGET_BENCH=ON \
             -DDISABLE_TARGET_TEST=ON
@@ -63,15 +64,25 @@ jobs:
           mkdir -p package/phaselimiter/bin
           cp build/bin/phase_limiter package/phaselimiter/bin/
           cp -r resource package/phaselimiter/
-          [ -d licenses ] && cp -r licenses package/phaselimiter/ || true
+          cp -r licenses package/phaselimiter/
+          python3 -c "
+          import os, sys
+          req = ['boost.txt','onetbb.txt','pocketfft.txt','libpng.txt','zlib.txt','eigen.txt','gflags.txt','picojson.txt','hnswlib.txt','libsimdpp.txt','optim.txt','cimg.txt','armadillo.txt','phaselimiter.txt']
+          for f in req:
+              p = os.path.join('package/phaselimiter/licenses', f)
+              if not os.path.isfile(p) or os.path.getsize(p) == 0:
+                  print(f'ERROR: Missing or empty license file: {p}')
+                  sys.exit(1)
+          print('All 14 license files verified non-empty.')
+          "
           cp LICENSE package/phaselimiter/
           cp PORTING.md package/phaselimiter/
-          tar -C package -cJf phaselimiter-0.2.0-native2-linux-x64.tar.xz phaselimiter
+          tar -C package -cJf phaselimiter-0.2.0-native3-linux-x64.tar.xz phaselimiter
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: phaselimiter-0.2.0-native2-linux-x64
-          path: phaselimiter-0.2.0-native2-linux-x64.tar.xz
+          name: phaselimiter-0.2.0-native3-linux-x64
+          path: phaselimiter-0.2.0-native3-linux-x64.tar.xz
 
   build-linux-arm64:
     name: Build Linux arm64 (Ubuntu 22.04)
@@ -99,6 +110,7 @@ jobs:
             -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
             -DCMAKE_BUILD_TYPE=Release \
             -DPHASELIMITER_STATIC_DEPS=ON \
+            -DPHASELIMITER_WAV_ONLY=ON \
             -DPHASELIMITER_DEPS_PREFIX=/opt/deps \
             -DDISABLE_TARGET_BENCH=ON \
             -DDISABLE_TARGET_TEST=ON
@@ -121,15 +133,25 @@ jobs:
           mkdir -p package/phaselimiter/bin
           cp build/bin/phase_limiter package/phaselimiter/bin/
           cp -r resource package/phaselimiter/
-          [ -d licenses ] && cp -r licenses package/phaselimiter/ || true
+          cp -r licenses package/phaselimiter/
+          python3 -c "
+          import os, sys
+          req = ['boost.txt','onetbb.txt','pocketfft.txt','libpng.txt','zlib.txt','eigen.txt','gflags.txt','picojson.txt','hnswlib.txt','libsimdpp.txt','optim.txt','cimg.txt','armadillo.txt','phaselimiter.txt']
+          for f in req:
+              p = os.path.join('package/phaselimiter/licenses', f)
+              if not os.path.isfile(p) or os.path.getsize(p) == 0:
+                  print(f'ERROR: Missing or empty license file: {p}')
+                  sys.exit(1)
+          print('All 14 license files verified non-empty.')
+          "
           cp LICENSE package/phaselimiter/
           cp PORTING.md package/phaselimiter/
-          tar -C package -cJf phaselimiter-0.2.0-native2-linux-arm64.tar.xz phaselimiter
+          tar -C package -cJf phaselimiter-0.2.0-native3-linux-arm64.tar.xz phaselimiter
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: phaselimiter-0.2.0-native2-linux-arm64
-          path: phaselimiter-0.2.0-native2-linux-arm64.tar.xz
+          name: phaselimiter-0.2.0-native3-linux-arm64
+          path: phaselimiter-0.2.0-native3-linux-arm64.tar.xz
 
   build-macos-arm64:
     name: Build macOS arm64
@@ -149,6 +171,7 @@ jobs:
             -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
             -DCMAKE_BUILD_TYPE=Release \
             -DPHASELIMITER_STATIC_DEPS=ON \
+            -DPHASELIMITER_WAV_ONLY=ON \
             -DPHASELIMITER_DEPS_PREFIX=$HOME/deps \
             -DCMAKE_OSX_ARCHITECTURES=arm64 \
             -DCMAKE_OSX_DEPLOYMENT_TARGET=13.0 \
@@ -176,15 +199,25 @@ jobs:
           mkdir -p package/phaselimiter/bin
           cp build/bin/phase_limiter package/phaselimiter/bin/
           cp -r resource package/phaselimiter/
-          [ -d licenses ] && cp -r licenses package/phaselimiter/ || true
+          cp -r licenses package/phaselimiter/
+          python3 -c "
+          import os, sys
+          req = ['boost.txt','onetbb.txt','pocketfft.txt','libpng.txt','zlib.txt','eigen.txt','gflags.txt','picojson.txt','hnswlib.txt','libsimdpp.txt','optim.txt','cimg.txt','armadillo.txt','phaselimiter.txt']
+          for f in req:
+              p = os.path.join('package/phaselimiter/licenses', f)
+              if not os.path.isfile(p) or os.path.getsize(p) == 0:
+                  print(f'ERROR: Missing or empty license file: {p}')
+                  sys.exit(1)
+          print('All 14 license files verified non-empty.')
+          "
           cp LICENSE package/phaselimiter/
           cp PORTING.md package/phaselimiter/
-          tar -C package -cJf phaselimiter-0.2.0-native2-macos-arm64.tar.xz phaselimiter
+          tar -C package -cJf phaselimiter-0.2.0-native3-macos-arm64.tar.xz phaselimiter
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: phaselimiter-0.2.0-native2-macos-arm64
-          path: phaselimiter-0.2.0-native2-macos-arm64.tar.xz
+          name: phaselimiter-0.2.0-native3-macos-arm64
+          path: phaselimiter-0.2.0-native3-macos-arm64.tar.xz
 
   build-macos-x86_64:
     name: Build macOS x86_64
@@ -204,6 +237,7 @@ jobs:
             -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
             -DCMAKE_BUILD_TYPE=Release \
             -DPHASELIMITER_STATIC_DEPS=ON \
+            -DPHASELIMITER_WAV_ONLY=ON \
             -DPHASELIMITER_DEPS_PREFIX=$HOME/deps \
             -DCMAKE_OSX_ARCHITECTURES=x86_64 \
             -DCMAKE_OSX_DEPLOYMENT_TARGET=13.0 \
@@ -231,15 +265,25 @@ jobs:
           mkdir -p package/phaselimiter/bin
           cp build/bin/phase_limiter package/phaselimiter/bin/
           cp -r resource package/phaselimiter/
-          [ -d licenses ] && cp -r licenses package/phaselimiter/ || true
+          cp -r licenses package/phaselimiter/
+          python3 -c "
+          import os, sys
+          req = ['boost.txt','onetbb.txt','pocketfft.txt','libpng.txt','zlib.txt','eigen.txt','gflags.txt','picojson.txt','hnswlib.txt','libsimdpp.txt','optim.txt','cimg.txt','armadillo.txt','phaselimiter.txt']
+          for f in req:
+              p = os.path.join('package/phaselimiter/licenses', f)
+              if not os.path.isfile(p) or os.path.getsize(p) == 0:
+                  print(f'ERROR: Missing or empty license file: {p}')
+                  sys.exit(1)
+          print('All 14 license files verified non-empty.')
+          "
           cp LICENSE package/phaselimiter/
           cp PORTING.md package/phaselimiter/
-          tar -C package -cJf phaselimiter-0.2.0-native2-macos-x86_64.tar.xz phaselimiter
+          tar -C package -cJf phaselimiter-0.2.0-native3-macos-x86_64.tar.xz phaselimiter
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: phaselimiter-0.2.0-native2-macos-x86_64
-          path: phaselimiter-0.2.0-native2-macos-x86_64.tar.xz
+          name: phaselimiter-0.2.0-native3-macos-x86_64
+          path: phaselimiter-0.2.0-native3-macos-x86_64.tar.xz
 
   proof-linux-x64:
     name: Proof Linux x64 on Clean Ubuntu 22.04 & Debian 12
@@ -253,7 +297,7 @@ jobs:
       - name: Download Linux x64 asset
         uses: actions/download-artifact@v4
         with:
-          name: phaselimiter-0.2.0-native2-linux-x64
+          name: phaselimiter-0.2.0-native3-linux-x64
       - name: Proof on clean Ubuntu 22.04
         run: |
           docker run --rm \
@@ -261,7 +305,7 @@ jobs:
             -w /work \
             ubuntu:22.04 \
             bash -c "
-              tar -xf phaselimiter-0.2.0-native2-linux-x64.tar.xz
+              tar -xf phaselimiter-0.2.0-native3-linux-x64.tar.xz
               ./phaselimiter/bin/phase_limiter -help || true
               ./phaselimiter/bin/phase_limiter \
                 -input=test_data/test5.wav \
@@ -320,10 +364,10 @@ jobs:
       - name: Download Linux arm64 asset
         uses: actions/download-artifact@v4
         with:
-          name: phaselimiter-0.2.0-native2-linux-arm64
+          name: phaselimiter-0.2.0-native3-linux-arm64
       - name: Proof on clean Ubuntu 22.04
         run: |
-          tar -xf phaselimiter-0.2.0-native2-linux-arm64.tar.xz
+          tar -xf phaselimiter-0.2.0-native3-linux-arm64.tar.xz
           ./phaselimiter/bin/phase_limiter -help || true
           ./phaselimiter/bin/phase_limiter \
             -input=test_data/test5.wav \
@@ -352,12 +396,12 @@ jobs:
       - name: Download macOS arm64 asset
         uses: actions/download-artifact@v4
         with:
-          name: phaselimiter-0.2.0-native2-macos-arm64
+          name: phaselimiter-0.2.0-native3-macos-arm64
       - name: Install ffmpeg
         run: brew install ffmpeg
       - name: Verify signature & execute proof
         run: |
-          tar -xf phaselimiter-0.2.0-native2-macos-arm64.tar.xz
+          tar -xf phaselimiter-0.2.0-native3-macos-arm64.tar.xz
           codesign -v --strict phaselimiter/bin/phase_limiter
           ./phaselimiter/bin/phase_limiter -help || true
           ./phaselimiter/bin/phase_limiter \
@@ -384,13 +428,13 @@ jobs:
       - name: Download candidate asset
         uses: actions/download-artifact@v4
         with:
-          name: phaselimiter-0.2.0-native2-linux-x64
+          name: phaselimiter-0.2.0-native3-linux-x64
       - name: Download and unpack upstream reference release
         run: |
           curl -fsSL https://github.com/ai-mastering/phaselimiter/releases/download/v0.2.0/release.tar.xz -o upstream_release.tar.xz
           mkdir -p upstream_ref
           tar -xf upstream_release.tar.xz -C upstream_ref
-          tar -xf phaselimiter-0.2.0-native2-linux-x64.tar.xz
+          tar -xf phaselimiter-0.2.0-native3-linux-x64.tar.xz
       - name: Generate synthetic 90s audio if needed
         run: |
           python3 scripts/equivalence_gate.py --generate-test-audio test_data/synth_90s.wav
@@ -471,12 +515,12 @@ jobs:
       - name: Generate SHA256SUMS
         run: |
           cd dist
-          sha256sum phaselimiter-0.2.0-native2-*.tar.xz > SHA256SUMS
+          sha256sum phaselimiter-0.2.0-native3-*.tar.xz > SHA256SUMS
           cat SHA256SUMS
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            dist/phaselimiter-0.2.0-native2-*.tar.xz
+            dist/phaselimiter-0.2.0-native3-*.tar.xz
             dist/SHA256SUMS
           generate_release_notes: true
