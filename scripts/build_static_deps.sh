@@ -93,6 +93,7 @@ SNDFILE_SHA="3799ca9924d3125038880367bf1468e53a1b7e3686a934f098b7e1d286cdb80e"
   tar -xf "libsndfile.tar.xz"
   mkdir libsndfile-1.2.2/build && cd libsndfile-1.2.2/build
   cmake .. \
+    -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
     -DCMAKE_INSTALL_PREFIX="${PREFIX}" \
     -DCMAKE_BUILD_TYPE=Release \
     -DBUILD_SHARED_LIBS=OFF \
@@ -116,6 +117,7 @@ TBB_SHA="3ad5dd08954b39d113dc5b3f8a8dc6dc1fd5250032b7c491eb07aed5c94133e1"
   tar -xzf "tbb.tar.gz"
   mkdir oneTBB-2021.13.0/build && cd oneTBB-2021.13.0/build
   cmake .. \
+    -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
     -DCMAKE_INSTALL_PREFIX="${PREFIX}" \
     -DCMAKE_BUILD_TYPE=Release \
     -DBUILD_SHARED_LIBS=OFF \

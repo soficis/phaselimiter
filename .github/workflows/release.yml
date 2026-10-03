@@ -34,6 +34,7 @@ jobs:
       - name: Configure CMake
         run: |
           cmake -B build \
+            -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
             -DCMAKE_BUILD_TYPE=Release \
             -DPHASELIMITER_STATIC_DEPS=ON \
             -DPHASELIMITER_DEPS_PREFIX=/opt/deps \
@@ -62,7 +63,7 @@ jobs:
           mkdir -p package/phaselimiter/bin
           cp build/bin/phase_limiter package/phaselimiter/bin/
           cp -r resource package/phaselimiter/
-          cp -r licenses package/phaselimiter/
+          [ -d licenses ] && cp -r licenses package/phaselimiter/ || true
           cp LICENSE package/phaselimiter/
           cp PORTING.md package/phaselimiter/
           tar -C package -cJf phaselimiter-0.2.0-native2-linux-x64.tar.xz phaselimiter
@@ -95,6 +96,7 @@ jobs:
       - name: Configure CMake
         run: |
           cmake -B build \
+            -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
             -DCMAKE_BUILD_TYPE=Release \
             -DPHASELIMITER_STATIC_DEPS=ON \
             -DPHASELIMITER_DEPS_PREFIX=/opt/deps \
@@ -119,7 +121,7 @@ jobs:
           mkdir -p package/phaselimiter/bin
           cp build/bin/phase_limiter package/phaselimiter/bin/
           cp -r resource package/phaselimiter/
-          cp -r licenses package/phaselimiter/
+          [ -d licenses ] && cp -r licenses package/phaselimiter/ || true
           cp LICENSE package/phaselimiter/
           cp PORTING.md package/phaselimiter/
           tar -C package -cJf phaselimiter-0.2.0-native2-linux-arm64.tar.xz phaselimiter
@@ -144,6 +146,7 @@ jobs:
       - name: Configure CMake
         run: |
           cmake -B build \
+            -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
             -DCMAKE_BUILD_TYPE=Release \
             -DPHASELIMITER_STATIC_DEPS=ON \
             -DPHASELIMITER_DEPS_PREFIX=$HOME/deps \
@@ -173,7 +176,7 @@ jobs:
           mkdir -p package/phaselimiter/bin
           cp build/bin/phase_limiter package/phaselimiter/bin/
           cp -r resource package/phaselimiter/
-          cp -r licenses package/phaselimiter/
+          [ -d licenses ] && cp -r licenses package/phaselimiter/ || true
           cp LICENSE package/phaselimiter/
           cp PORTING.md package/phaselimiter/
           tar -C package -cJf phaselimiter-0.2.0-native2-macos-arm64.tar.xz phaselimiter
@@ -198,6 +201,7 @@ jobs:
       - name: Configure CMake
         run: |
           cmake -B build \
+            -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
             -DCMAKE_BUILD_TYPE=Release \
             -DPHASELIMITER_STATIC_DEPS=ON \
             -DPHASELIMITER_DEPS_PREFIX=$HOME/deps \
@@ -227,7 +231,7 @@ jobs:
           mkdir -p package/phaselimiter/bin
           cp build/bin/phase_limiter package/phaselimiter/bin/
           cp -r resource package/phaselimiter/
-          cp -r licenses package/phaselimiter/
+          [ -d licenses ] && cp -r licenses package/phaselimiter/ || true
           cp LICENSE package/phaselimiter/
           cp PORTING.md package/phaselimiter/
           tar -C package -cJf phaselimiter-0.2.0-native2-macos-x86_64.tar.xz phaselimiter
