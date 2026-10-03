@@ -1,0 +1,396 @@
+name: Release Portable PhaseLimiter
+
+on:
+  push:
+    tags:
+      - 'v*-native*'
+  workflow_dispatch:
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-linux-x64:
+    name: Build Linux x64 (Ubuntu 22.04)
+    runs-on: ubuntu-latest
+    container:
+      image: ubuntu:22.04
+    steps:
+      - name: Install build tools
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            build-essential cmake git curl ca-certificates xz-utils python3 \
+            bzip2 pkg-config file
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Build static dependencies
+        run: |
+          chmod +x scripts/build_static_deps.sh
+          ./scripts/build_static_deps.sh /opt/deps
+      - name: Configure CMake
+        run: |
+          cmake -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DPHASELIMITER_STATIC_DEPS=ON \
+            -DPHASELIMITER_DEPS_PREFIX=/opt/deps \
+            -DDISABLE_TARGET_BENCH=ON \
+            -DDISABLE_TARGET_TEST=ON
+      - name: Build phase_limiter
+        run: |
+          cmake --build build --target phase_limiter -j$(nproc)
+      - name: Strip binary
+        run: |
+          strip build/bin/phase_limiter
+      - name: Verify Linux portability
+        run: |
+          echo "=== NEEDED Shared Libraries ==="
+          readelf -d build/bin/phase_limiter | grep NEEDED
+          # Check for forbidden dependencies (only standard libc/libm/libpthread/libdl/librt/libstdc++/libgcc allowed)
+          FORBIDDEN=$(readelf -d build/bin/phase_limiter | grep NEEDED | grep -v -E "libc\.so|libm\.so|libpthread\.so|libdl\.so|librt\.so|libstdc\+\+\.so|libgcc_s\.so|ld-linux" || true)
+          if [ -n "$FORBIDDEN" ]; then
+            echo "ERROR: Unapproved dynamic libraries found: $FORBIDDEN"
+            exit 1
+          fi
+          echo "=== Maximum GLIBC Version ==="
+          objdump -p build/bin/phase_limiter | grep -o 'GLIBC_[0-9.]*' | sort -V | tail -n 1
+      - name: Assemble release package
+        run: |
+          mkdir -p package/phaselimiter/bin
+          cp build/bin/phase_limiter package/phaselimiter/bin/
+          cp -r resource package/phaselimiter/
+          cp -r licenses package/phaselimiter/
+          cp LICENSE package/phaselimiter/
+          cp PORTING.md package/phaselimiter/
+          tar -C package -cJf phaselimiter-0.2.0-native2-linux-x64.tar.xz phaselimiter
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: phaselimiter-0.2.0-native2-linux-x64
+          path: phaselimiter-0.2.0-native2-linux-x64.tar.xz
+
+  build-linux-arm64:
+    name: Build Linux arm64 (Ubuntu 22.04)
+    runs-on: ubuntu-24.04-arm
+    container:
+      image: ubuntu:22.04
+    steps:
+      - name: Install build tools
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            build-essential cmake git curl ca-certificates xz-utils python3 \
+            bzip2 pkg-config file
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Build static dependencies
+        run: |
+          chmod +x scripts/build_static_deps.sh
+          ./scripts/build_static_deps.sh /opt/deps
+      - name: Configure CMake
+        run: |
+          cmake -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DPHASELIMITER_STATIC_DEPS=ON \
+            -DPHASELIMITER_DEPS_PREFIX=/opt/deps \
+            -DDISABLE_TARGET_BENCH=ON \
+            -DDISABLE_TARGET_TEST=ON
+      - name: Build phase_limiter
+        run: |
+          cmake --build build --target phase_limiter -j$(nproc)
+      - name: Strip binary
+        run: |
+          strip build/bin/phase_limiter
+      - name: Verify Linux portability
+        run: |
+          readelf -d build/bin/phase_limiter | grep NEEDED
+          FORBIDDEN=$(readelf -d build/bin/phase_limiter | grep NEEDED | grep -v -E "libc\.so|libm\.so|libpthread\.so|libdl\.so|librt\.so|libstdc\+\+\.so|libgcc_s\.so|ld-linux" || true)
+          if [ -n "$FORBIDDEN" ]; then
+            echo "ERROR: Unapproved dynamic libraries found: $FORBIDDEN"
+            exit 1
+          fi
+      - name: Assemble release package
+        run: |
+          mkdir -p package/phaselimiter/bin
+          cp build/bin/phase_limiter package/phaselimiter/bin/
+          cp -r resource package/phaselimiter/
+          cp -r licenses package/phaselimiter/
+          cp LICENSE package/phaselimiter/
+          cp PORTING.md package/phaselimiter/
+          tar -C package -cJf phaselimiter-0.2.0-native2-linux-arm64.tar.xz phaselimiter
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: phaselimiter-0.2.0-native2-linux-arm64
+          path: phaselimiter-0.2.0-native2-linux-arm64.tar.xz
+
+  build-macos-arm64:
+    name: Build macOS arm64
+    runs-on: macos-15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Build static dependencies
+        run: |
+          chmod +x scripts/build_static_deps.sh
+          ./scripts/build_static_deps.sh $HOME/deps
+      - name: Configure CMake
+        run: |
+          cmake -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DPHASELIMITER_STATIC_DEPS=ON \
+            -DPHASELIMITER_DEPS_PREFIX=$HOME/deps \
+            -DCMAKE_OSX_ARCHITECTURES=arm64 \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET=13.0 \
+            -DDISABLE_TARGET_BENCH=ON \
+            -DDISABLE_TARGET_TEST=ON
+      - name: Build phase_limiter
+        run: |
+          cmake --build build --target phase_limiter -j$(sysctl -n hw.ncpu)
+      - name: Strip and Sign binary
+        run: |
+          strip build/bin/phase_limiter
+          codesign --force --sign - build/bin/phase_limiter
+      - name: Verify macOS portability
+        run: |
+          echo "=== Dynamic Dependencies (otool -L) ==="
+          otool -L build/bin/phase_limiter
+          FORBIDDEN=$(otool -L build/bin/phase_limiter | grep -v "/usr/lib/" | grep -v "/System/Library/" | grep -v "build/bin/phase_limiter" || true)
+          if [ -n "$FORBIDDEN" ]; then
+            echo "ERROR: Third-party dylib detected: $FORBIDDEN"
+            exit 1
+          fi
+          codesign -v --strict build/bin/phase_limiter
+      - name: Assemble release package
+        run: |
+          mkdir -p package/phaselimiter/bin
+          cp build/bin/phase_limiter package/phaselimiter/bin/
+          cp -r resource package/phaselimiter/
+          cp -r licenses package/phaselimiter/
+          cp LICENSE package/phaselimiter/
+          cp PORTING.md package/phaselimiter/
+          tar -C package -cJf phaselimiter-0.2.0-native2-macos-arm64.tar.xz phaselimiter
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: phaselimiter-0.2.0-native2-macos-arm64
+          path: phaselimiter-0.2.0-native2-macos-arm64.tar.xz
+
+  build-macos-x86_64:
+    name: Build macOS x86_64
+    runs-on: macos-15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Build static dependencies
+        run: |
+          chmod +x scripts/build_static_deps.sh
+          CMAKE_OSX_ARCHITECTURES=x86_64 ./scripts/build_static_deps.sh $HOME/deps
+      - name: Configure CMake
+        run: |
+          cmake -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DPHASELIMITER_STATIC_DEPS=ON \
+            -DPHASELIMITER_DEPS_PREFIX=$HOME/deps \
+            -DCMAKE_OSX_ARCHITECTURES=x86_64 \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET=13.0 \
+            -DDISABLE_TARGET_BENCH=ON \
+            -DDISABLE_TARGET_TEST=ON
+      - name: Build phase_limiter
+        run: |
+          cmake --build build --target phase_limiter -j$(sysctl -n hw.ncpu)
+      - name: Strip and Sign binary
+        run: |
+          strip build/bin/phase_limiter
+          codesign --force --sign - build/bin/phase_limiter
+      - name: Verify macOS portability
+        run: |
+          echo "=== Dynamic Dependencies (otool -L) ==="
+          otool -L build/bin/phase_limiter
+          FORBIDDEN=$(otool -L build/bin/phase_limiter | grep -v "/usr/lib/" | grep -v "/System/Library/" | grep -v "build/bin/phase_limiter" || true)
+          if [ -n "$FORBIDDEN" ]; then
+            echo "ERROR: Third-party dylib detected: $FORBIDDEN"
+            exit 1
+          fi
+          codesign -v --strict build/bin/phase_limiter
+      - name: Assemble release package
+        run: |
+          mkdir -p package/phaselimiter/bin
+          cp build/bin/phase_limiter package/phaselimiter/bin/
+          cp -r resource package/phaselimiter/
+          cp -r licenses package/phaselimiter/
+          cp LICENSE package/phaselimiter/
+          cp PORTING.md package/phaselimiter/
+          tar -C package -cJf phaselimiter-0.2.0-native2-macos-x86_64.tar.xz phaselimiter
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: phaselimiter-0.2.0-native2-macos-x86_64
+          path: phaselimiter-0.2.0-native2-macos-x86_64.tar.xz
+
+  proof-linux-x64:
+    name: Proof Linux x64 on Clean Ubuntu 22.04 & Debian 12
+    needs: build-linux-x64
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Linux x64 asset
+        uses: actions/download-artifact@v4
+        with:
+          name: phaselimiter-0.2.0-native2-linux-x64
+      - name: Checkout test data
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: test_data
+      - name: Proof on clean Ubuntu 22.04
+        run: |
+          docker run --rm \
+            -v "$(pwd)":/work \
+            -w /work \
+            ubuntu:22.04 \
+            bash -c "
+              tar -xf phaselimiter-0.2.0-native2-linux-x64.tar.xz
+              ./phaselimiter/bin/phase_limiter -help
+              ./phaselimiter/bin/phase_limiter \
+                -input=test_data/test5.wav \
+                -output=/tmp/proof_out.wav \
+                -mastering_reference_file=phaselimiter/resource/mastering_reference.json \
+                -sound_quality2_cache=phaselimiter/resource/sound_quality2_cache \
+                -disable_input_encode=true \
+                -output_format=wav \
+                -sample_rate=44100 \
+                -bit_depth=16 \
+                -ceiling=-0.1 \
+                -mastering=true \
+                -tmp=/tmp
+              test -s /tmp/proof_out.wav
+              echo 'Clean Ubuntu 22.04 execution successful!'
+            "
+      - name: Proof on clean Debian 12
+        run: |
+          docker run --rm \
+            -v "$(pwd)":/work \
+            -w /work \
+            debian:12 \
+            bash -c "
+              ./phaselimiter/bin/phase_limiter -help
+              ./phaselimiter/bin/phase_limiter \
+                -input=test_data/test5.wav \
+                -output=/tmp/proof_deb_out.wav \
+                -mastering_reference_file=phaselimiter/resource/mastering_reference.json \
+                -sound_quality2_cache=phaselimiter/resource/sound_quality2_cache \
+                -disable_input_encode=true \
+                -output_format=wav \
+                -sample_rate=44100 \
+                -bit_depth=16 \
+                -ceiling=-0.1 \
+                -mastering=true \
+                -tmp=/tmp
+              test -s /tmp/proof_deb_out.wav
+              echo 'Clean Debian 12 execution successful!'
+            "
+
+  proof-macos-arm64:
+    name: Proof macOS arm64
+    needs: build-macos-arm64
+    runs-on: macos-15
+    steps:
+      - name: Download macOS arm64 asset
+        uses: actions/download-artifact@v4
+        with:
+          name: phaselimiter-0.2.0-native2-macos-arm64
+      - name: Checkout test data
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: test_data
+      - name: Verify signature & execute proof
+        run: |
+          tar -xf phaselimiter-0.2.0-native2-macos-arm64.tar.xz
+          codesign -v --strict phaselimiter/bin/phase_limiter
+          ./phaselimiter/bin/phase_limiter -help
+          ./phaselimiter/bin/phase_limiter \
+            -input=test_data/test5.wav \
+            -output=/tmp/proof_mac_out.wav \
+            -mastering_reference_file=phaselimiter/resource/mastering_reference.json \
+            -sound_quality2_cache=phaselimiter/resource/sound_quality2_cache \
+            -disable_input_encode=true \
+            -output_format=wav \
+            -sample_rate=44100 \
+            -bit_depth=16 \
+            -ceiling=-0.1 \
+            -mastering=true \
+            -tmp=/tmp
+          test -s /tmp/proof_mac_out.wav
+
+  equivalence-gate:
+    name: Numerical Equivalence Gate (vs Upstream IPP)
+    needs: build-linux-x64
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Download candidate asset
+        uses: actions/download-artifact@v4
+        with:
+          name: phaselimiter-0.2.0-native2-linux-x64
+      - name: Download and unpack upstream reference release
+        run: |
+          curl -fsSL https://github.com/ai-mastering/phaselimiter/releases/download/v0.2.0/release.tar.xz -o upstream_release.tar.xz
+          mkdir -p upstream_ref
+          tar -xf upstream_release.tar.xz -C upstream_ref
+          tar -xf phaselimiter-0.2.0-native2-linux-x64.tar.xz
+      - name: Run Equivalence Gate in Ubuntu 20.04 container
+        run: |
+          docker run --rm \
+            -v "$(pwd)":/work \
+            -w /work \
+            ubuntu:20.04 \
+            bash -c "
+              apt-get update && apt-get install -y ffmpeg python3 libtbb2 libsndfile1
+              python3 scripts/equivalence_gate.py \
+                upstream_ref/phaselimiter/bin/phase_limiter \
+                phaselimiter/bin/phase_limiter \
+                test_data/test5.wav test_data/test2.wav \
+                --resource-dir phaselimiter/resource
+            "
+
+  publish-release:
+    name: Publish Release Assets & SHA256SUMS
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs:
+      - build-linux-x64
+      - build-linux-arm64
+      - build-macos-arm64
+      - build-macos-x86_64
+      - proof-linux-x64
+      - proof-macos-arm64
+      - equivalence-gate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download all built artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Generate SHA256SUMS
+        run: |
+          cd dist
+          sha256sum phaselimiter-0.2.0-native2-*.tar.xz > SHA256SUMS
+          cat SHA256SUMS
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/phaselimiter-0.2.0-native2-*.tar.xz
+            dist/SHA256SUMS
+          generate_release_notes: true
