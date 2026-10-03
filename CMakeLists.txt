@@ -77,7 +77,15 @@ else()
   find_library(SNDFILE_LIBRARY NAMES sndfile libsndfile REQUIRED)
   find_path(SNDFILE_INCLUDE_DIR NAMES sndfile.h REQUIRED)
   set(SNDFILE_LIBRARIES ${SNDFILE_LIBRARY})
-  include_directories(${SNDFILE_INCLUDE_DIR})
+  if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/deps/optim/header_only_version/optim.hpp")
+  message(STATUS "Generating OptimLib header-only version...")
+  execute_process(
+    COMMAND ./configure --header-only-version
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/deps/optim
+  )
+endif()
+
+include_directories(${SNDFILE_INCLUDE_DIR})
 endif()
 
 set(BAKUAGE_LINK_LIBRARIES
