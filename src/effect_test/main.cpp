@@ -3,7 +3,6 @@
 #include "gflags/gflags.h"
 #include "sndfile.h"
 #include "tbb/tbb.h"
-#include "tbb/pipeline.h"
 #include "tbb/scalable_allocator.h"
 #include "tbb/cache_aligned_allocator.h"
 #include <boost/algorithm/string/classification.hpp>

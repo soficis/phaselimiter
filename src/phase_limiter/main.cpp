@@ -36,6 +36,10 @@
 #include "phase_limiter/freq_expander.h"
 #include "phase_limiter/config.h"
 #include "phase_limiter/wave_utils.h"
+#if __has_include(<tbb/global_control.h>)
+#include <tbb/global_control.h>
+#include <tbb/info.h>
+#endif
 
 DEFINE_bool(quick_exit, true, "quick exit");
 
@@ -777,8 +781,14 @@ int main(int argc, char* argv[]) {
 
         // TBBの初期化とか (ここで初期化しておくと、毎回初期化しなくても良いらしい)
         // https://www.xlsoft.com/jp/products/intel/perflib/tbb/41/tbb_userguide_lnx/reference/task_scheduler/task_scheduler_init_cls.htm
+#if defined(TBB_INTERFACE_VERSION) && TBB_INTERFACE_VERSION >= 12000
+        int pl_nthreads = FLAGS_worker_count ? FLAGS_worker_count : (int)tbb::info::default_concurrency();
+        tbb::global_control tbb_init(tbb::global_control::max_allowed_parallelism, pl_nthreads);
+        std::cerr << "TBB default_num_threads:" << tbb::info::default_concurrency() << std::endl;
+#else
         tbb::task_scheduler_init tbb_init(FLAGS_worker_count ? FLAGS_worker_count : tbb::task_scheduler_init::default_num_threads());
         std::cerr << "TBB default_num_threads:" << tbb::task_scheduler_init::default_num_threads() << std::endl;
+#endif
         PrintMemoryUsage();
 
         phase_limiter::GradCoreSettings::GetInstance().set_erb_eval_func_weighting(FLAGS_erb_eval_func_weighting);

@@ -10,6 +10,10 @@
 
 #include "ipp.h"
 #include "gflags/gflags.h"
+#if __has_include(<tbb/global_control.h>)
+#include <tbb/global_control.h>
+#include <tbb/info.h>
+#endif
 #include "picojson.h"
 
 #include "audio_analyzer/single_mode.h"
@@ -79,8 +83,14 @@ int main(int argc, char* argv[]) {
 		std::cerr << "Ipp initialized " << lib->Name << " " << lib->Version << std::endl;
 		PrintMemoryUsage();
 
+#if defined(TBB_INTERFACE_VERSION) && TBB_INTERFACE_VERSION >= 12000
+		int pl_nthreads = FLAGS_worker_count ? FLAGS_worker_count : (int)tbb::info::default_concurrency();
+		tbb::global_control tbb_init(tbb::global_control::max_allowed_parallelism, pl_nthreads);
+		std::cerr << "TBB default_num_threads:" << tbb::info::default_concurrency() << std::endl;
+#else
 		tbb::task_scheduler_init tbb_init(FLAGS_worker_count ? FLAGS_worker_count : tbb::task_scheduler_init::default_num_threads());
 		std::cerr << "TBB default_num_threads:" << tbb::task_scheduler_init::default_num_threads() << std::endl;
+#endif
 
 
 		if (FLAGS_mode == "default") {

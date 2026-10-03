@@ -1,3 +1,4 @@
+#include <cstdint>
 #include "phase_limiter/equalization.h"
 
 #include <cmath>

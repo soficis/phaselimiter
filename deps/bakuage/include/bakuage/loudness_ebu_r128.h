@@ -45,7 +45,7 @@ void CalculateLoudnessRangeShort(const Float *input, const int channels, const i
 
 template <typename Float>
 void CalculateHistogram(const Float *input, int channels, int samples, int sample_freq, Float mean_sec,
-                        std::vector<Float> *histogram, std::vector<Float> *mid_to_side_histogram = NULL);
+                        std::vector<Float> *histogram, std::vector<Float> *mid_to_side_histogram = nullptr);
 
 }
 }

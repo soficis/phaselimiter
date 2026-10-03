@@ -3,6 +3,9 @@
 #include <random>
 #include <benchmark/benchmark.h>
 #include <tbb/tbb.h>
+#if __has_include(<tbb/global_control.h>)
+#include <tbb/global_control.h>
+#endif
 #include "bakuage/memory.h"
 #include "bakuage/utils.h"
 #include "phase_limiter/GradCalculator.h"
@@ -12,7 +15,11 @@ template <class SimdType>
 void BM_GradCalculatorEval(benchmark::State& state) {
     typedef typename SimdType::element_type Float;
     
+#if defined(TBB_INTERFACE_VERSION) && TBB_INTERFACE_VERSION >= 12000
+    tbb::global_control tbb_init(tbb::global_control::max_allowed_parallelism, state.range(0));
+#else
     tbb::task_scheduler_init tbb_init(state.range(0));
+#endif
     
     const int waveLen = 44100 * 10;
     Float *wave = (Float *)bakuage::AlignedMalloc(sizeof(Float) * waveLen, PL_MEMORY_ALIGN);
@@ -54,7 +61,11 @@ template <class SimdType>
 static void BM_GradCalculatorGrad(benchmark::State& state) {
     typedef typename SimdType::element_type Float;
     
+#if defined(TBB_INTERFACE_VERSION) && TBB_INTERFACE_VERSION >= 12000
+    tbb::global_control tbb_init(tbb::global_control::max_allowed_parallelism, state.range(0));
+#else
     tbb::task_scheduler_init tbb_init(state.range(0));
+#endif
     
     const int waveLen = 44100 * 10;
     Float *wave = (Float *)bakuage::AlignedMalloc(sizeof(Float) * waveLen, PL_MEMORY_ALIGN);
