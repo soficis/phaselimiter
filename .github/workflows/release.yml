@@ -315,6 +315,8 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: phaselimiter-0.2.0-native2-macos-arm64
+      - name: Install ffmpeg
+        run: brew install ffmpeg
       - name: Verify signature & execute proof
         run: |
           tar -xf phaselimiter-0.2.0-native2-macos-arm64.tar.xz
@@ -379,6 +381,9 @@ jobs:
                   -tmp=tmp_ref
               done
             "
+      - name: Install candidate dependencies
+        run: |
+          sudo apt-get update && sudo apt-get install -y ffmpeg python3
       - name: Process audio with candidate on Ubuntu 22.04 host
         run: |
           for f in test_data/test5.wav test_data/test2.wav test_data/synth_90s.wav; do
@@ -398,7 +403,6 @@ jobs:
           done
       - name: Verify numerical equivalence
         run: |
-          sudo apt-get update && sudo apt-get install -y ffmpeg python3
           python3 scripts/equivalence_gate.py \
             --compare-pairs \
             ref_out/test5.wav cand_out/test5.wav \
