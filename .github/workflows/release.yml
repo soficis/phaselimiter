@@ -246,14 +246,14 @@ jobs:
     needs: build-linux-x64
     runs-on: ubuntu-latest
     steps:
-      - name: Download Linux x64 asset
-        uses: actions/download-artifact@v4
-        with:
-          name: phaselimiter-0.2.0-native2-linux-x64
       - name: Checkout test data
         uses: actions/checkout@v4
         with:
           sparse-checkout: test_data
+      - name: Download Linux x64 asset
+        uses: actions/download-artifact@v4
+        with:
+          name: phaselimiter-0.2.0-native2-linux-x64
       - name: Proof on clean Ubuntu 22.04
         run: |
           docker run --rm \
@@ -307,14 +307,14 @@ jobs:
     needs: build-macos-arm64
     runs-on: macos-15
     steps:
-      - name: Download macOS arm64 asset
-        uses: actions/download-artifact@v4
-        with:
-          name: phaselimiter-0.2.0-native2-macos-arm64
       - name: Checkout test data
         uses: actions/checkout@v4
         with:
           sparse-checkout: test_data
+      - name: Download macOS arm64 asset
+        uses: actions/download-artifact@v4
+        with:
+          name: phaselimiter-0.2.0-native2-macos-arm64
       - name: Verify signature & execute proof
         run: |
           tar -xf phaselimiter-0.2.0-native2-macos-arm64.tar.xz
@@ -351,20 +351,59 @@ jobs:
           mkdir -p upstream_ref
           tar -xf upstream_release.tar.xz -C upstream_ref
           tar -xf phaselimiter-0.2.0-native2-linux-x64.tar.xz
-      - name: Run Equivalence Gate in Ubuntu 20.04 container
+      - name: Generate synthetic 90s audio if needed
         run: |
+          python3 scripts/equivalence_gate.py --generate-test-audio test_data/synth_90s.wav
+      - name: Process audio with upstream reference in Ubuntu 20.04 container
+        run: |
+          mkdir -p ref_out cand_out tmp_ref tmp_cand
           docker run --rm \
             -v "$(pwd)":/work \
             -w /work \
             ubuntu:20.04 \
             bash -c "
-              apt-get update && apt-get install -y ffmpeg python3 libtbb2 libsndfile1
-              python3 scripts/equivalence_gate.py \
+              apt-get update && apt-get install -y libtbb2 libsndfile1
+              for f in test_data/test5.wav test_data/test2.wav test_data/synth_90s.wav; do
+                base=\$(basename \"\$f\")
                 upstream_ref/phaselimiter/bin/phase_limiter \
-                phaselimiter/bin/phase_limiter \
-                test_data/test5.wav test_data/test2.wav \
-                --resource-dir phaselimiter/resource
+                  -input=\"\$f\" \
+                  -output=\"ref_out/\$base\" \
+                  -mastering_reference_file=phaselimiter/resource/mastering_reference.json \
+                  -sound_quality2_cache=phaselimiter/resource/sound_quality2_cache \
+                  -disable_input_encode=true \
+                  -output_format=wav \
+                  -sample_rate=44100 \
+                  -bit_depth=16 \
+                  -ceiling=-0.1 \
+                  -mastering=true \
+                  -tmp=tmp_ref
+              done
             "
+      - name: Process audio with candidate on Ubuntu 22.04 host
+        run: |
+          for f in test_data/test5.wav test_data/test2.wav test_data/synth_90s.wav; do
+            base=$(basename "$f")
+            ./phaselimiter/bin/phase_limiter \
+              -input="$f" \
+              -output="cand_out/$base" \
+              -mastering_reference_file=phaselimiter/resource/mastering_reference.json \
+              -sound_quality2_cache=phaselimiter/resource/sound_quality2_cache \
+              -disable_input_encode=true \
+              -output_format=wav \
+              -sample_rate=44100 \
+              -bit_depth=16 \
+              -ceiling=-0.1 \
+              -mastering=true \
+              -tmp=tmp_cand
+          done
+      - name: Verify numerical equivalence
+        run: |
+          sudo apt-get update && sudo apt-get install -y ffmpeg python3
+          python3 scripts/equivalence_gate.py \
+            --compare-pairs \
+            ref_out/test5.wav cand_out/test5.wav \
+            ref_out/test2.wav cand_out/test2.wav \
+            ref_out/synth_90s.wav cand_out/synth_90s.wav
 
   publish-release:
     name: Publish Release Assets & SHA256SUMS

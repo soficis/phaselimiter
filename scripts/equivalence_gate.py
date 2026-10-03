@@ -184,11 +184,63 @@ def compute_diff_rms_dbfs(ref_wav, cand_wav):
 
 def main():
     parser = argparse.ArgumentParser(description="PhaseLimiter Numerical Equivalence Gate")
-    parser.add_argument("reference_bin", help="Path to reference PhaseLimiter binary (upstream IPP)")
-    parser.add_argument("candidate_bin", help="Path to candidate PhaseLimiter binary")
+    parser.add_argument("reference_bin", nargs="?", default=None, help="Path to reference PhaseLimiter binary (upstream IPP)")
+    parser.add_argument("candidate_bin", nargs="?", default=None, help="Path to candidate PhaseLimiter binary")
     parser.add_argument("wav_inputs", nargs="*", help="Input WAV files to evaluate")
     parser.add_argument("--resource-dir", default="resource", help="Path to PhaseLimiter resource directory")
+    parser.add_argument("--generate-test-audio", help="Generate synthetic 90s test WAV to the specified path and exit")
+    parser.add_argument("--compare-pairs", nargs="+", help="Pairs of (ref_wav, cand_wav) to evaluate directly")
     args = parser.parse_args()
+
+    if args.generate_test_audio:
+        os.makedirs(os.path.dirname(os.path.abspath(args.generate_test_audio)), exist_ok=True)
+        generate_90s_test_wav(args.generate_test_audio)
+        print(f"Generated synthetic test audio at {args.generate_test_audio}")
+        sys.exit(0)
+
+    if args.compare_pairs:
+        pairs = args.compare_pairs
+        if len(pairs) % 2 != 0:
+            print("Error: --compare-pairs requires an even number of files (ref1 cand1 ref2 cand2 ...)", file=sys.stderr)
+            sys.exit(2)
+
+        print("=== PhaseLimiter Numerical Equivalence Gate ===")
+        print(f"Evaluating {len(pairs) // 2} pair(s):\n")
+        table_header = f"{'Input File':<28} | {'Ref LUFS':<8} | {'Cand LUFS':<9} | {'Δ LUFS':<6} | {'Ref Pk':<6} | {'Cand Pk':<7} | {'Δ Pk':<5} | {'Diff RMS':<9} | {'Gate'}"
+        print(table_header)
+        print("-" * len(table_header))
+
+        all_passed = True
+        for i in range(0, len(pairs), 2):
+            ref_wav = pairs[i]
+            cand_wav = pairs[i + 1]
+            base_name = os.path.basename(cand_wav)
+
+            ref_lufs, ref_pk = measure_loudness_and_peak(ref_wav)
+            cand_lufs, cand_pk = measure_loudness_and_peak(cand_wav)
+
+            delta_lufs = abs(ref_lufs - cand_lufs)
+            delta_pk = abs(ref_pk - cand_pk)
+            diff_rms = compute_diff_rms_dbfs(ref_wav, cand_wav)
+
+            passed = (
+                delta_lufs <= MAX_LUFS_DIFF and
+                delta_pk <= MAX_PEAK_DIFF and
+                diff_rms <= MAX_DIFF_RMS_DBFS
+            )
+            if not passed:
+                all_passed = False
+
+            status_str = "PASS" if passed else "FAIL"
+            print(f"{base_name:<28} | {ref_lufs:>8.2f} | {cand_lufs:>9.2f} | {delta_lufs:>6.2f} | {ref_pk:>6.2f} | {cand_pk:>7.2f} | {delta_pk:>5.2f} | {diff_rms:>8.2f}d | {status_str}")
+
+        print("\n" + "=" * len(table_header))
+        if all_passed:
+            print("✅ EQUIVALENCE GATE PASSED: All numerical tolerances satisfied.")
+            sys.exit(0)
+        else:
+            print("❌ EQUIVALENCE GATE FAILED: One or more files exceeded numerical tolerance thresholds.", file=sys.stderr)
+            sys.exit(1)
 
     wavs = list(args.wav_inputs)
 
