@@ -12,7 +12,9 @@
 #include <thread>
 #include <vector>
 #include <list>
+#if defined(__x86_64__) || defined(_M_X64) || defined(__i386__) || defined(_M_IX86)
 #include <immintrin.h>
+#endif
 #include <random>
 #include <map>
 #include <chrono>

@@ -3,7 +3,11 @@
 
 #include <algorithm>
 #include <cstdint>
+#if defined(__x86_64__) || defined(_M_X64) || defined(__i386__) || defined(_M_IX86)
 #include <immintrin.h>
+#elif defined(__ARM_NEON) || defined(__ARM_NEON__) || defined(__aarch64__)
+#include <arm_neon.h>
+#endif
 #include "bakuage/delay_filter.h"
 #include "bakuage/memory.h"
 
@@ -38,6 +42,7 @@ namespace bakuage {
         DelayFilter<Float> delay_filter_;
     };
 
+#if defined(__x86_64__) || defined(_M_X64) || defined(__i386__) || defined(_M_IX86)
 #ifdef __AVX__
 //http://stackoverflow.com/questions/23189488/horizontal-sum-of-32-bit-floats-in-256-bit-avx-vector            
 inline float _mm256_reduce_add_ps(__m256 x) {
@@ -60,7 +65,9 @@ inline float _mm_reduce_add_ps(__m128 x128) {
 	/* Conversion to float is a no-op on x86-64 */
 	return _mm_cvtss_f32(x32);
 }
+#endif
 
+#if defined(__x86_64__) || defined(_M_X64) || defined(__i386__) || defined(_M_IX86)
     template<>
     class FirFilter<float> {
     public:
@@ -117,6 +124,45 @@ inline float _mm_reduce_add_ps(__m128 x128) {
         AlignedPodVector<float> fir_;
         DelayFilter<float> delay_filter_;
     };
+#elif defined(__ARM_NEON) || defined(__ARM_NEON__) || defined(__aarch64__)
+    template<>
+    class FirFilter<float> {
+    public:
+		FirFilter(int len): fir_(len), delay_filter_(len) {}
+
+        template <typename Iterator>
+        FirFilter(Iterator bg, Iterator ed): fir_(bg, ed), delay_filter_(fir_.size()) {}
+
+		template <typename Iterator>
+		void UpdateFir(Iterator bg, Iterator ed) {
+			std::copy(bg, ed, fir_.data());
+		}
+
+        float Clock(const float &x) {
+            delay_filter_.Clock(x);
+
+            int len = 4 * (fir_.size() / 4);
+            float32x4_t sum = vdupq_n_f32(0.0f);
+            for (int i = 0; i < len; i += 4) {
+                float32x4_t xv = vld1q_f32(delay_filter_.data() + i);
+                float32x4_t yv = vld1q_f32(fir_.data() + i);
+                sum = vmlaq_f32(sum, xv, yv);
+            }
+            float result = vaddvq_f32(sum);
+            for (int i = len; i < fir_.size(); i++) {
+                result += delay_filter_[i] * fir_[i];
+            }
+            return result;
+        };
+        
+        void ClockWithoutResult(const float &x) {
+            delay_filter_.Clock(x);
+        };
+    private:
+        AlignedPodVector<float> fir_;
+        DelayFilter<float> delay_filter_;
+    };
+#endif
 }
 
 #endif 
