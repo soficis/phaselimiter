@@ -302,6 +302,44 @@ jobs:
               echo 'Clean Debian 12 execution successful!'
             "
 
+  proof-linux-arm64:
+    name: Proof Linux arm64 on Clean Ubuntu 22.04
+    needs: build-linux-arm64
+    runs-on: ubuntu-24.04-arm
+    container:
+      image: ubuntu:22.04
+    steps:
+      - name: Install proof dependencies
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends ca-certificates xz-utils ffmpeg
+      - name: Checkout test data
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: test_data
+      - name: Download Linux arm64 asset
+        uses: actions/download-artifact@v4
+        with:
+          name: phaselimiter-0.2.0-native2-linux-arm64
+      - name: Proof on clean Ubuntu 22.04
+        run: |
+          tar -xf phaselimiter-0.2.0-native2-linux-arm64.tar.xz
+          ./phaselimiter/bin/phase_limiter -help || true
+          ./phaselimiter/bin/phase_limiter \
+            -input=test_data/test5.wav \
+            -output=/tmp/proof_arm64_out.wav \
+            -mastering_reference_file=phaselimiter/resource/mastering_reference.json \
+            -sound_quality2_cache=phaselimiter/resource/sound_quality2_cache \
+            -disable_input_encode=true \
+            -output_format=wav \
+            -sample_rate=44100 \
+            -bit_depth=16 \
+            -ceiling=-0.1 \
+            -mastering=true \
+            -tmp=/tmp
+          test -s /tmp/proof_arm64_out.wav
+          echo 'Clean Ubuntu 22.04 ARM64 execution successful!'
+
   proof-macos-arm64:
     name: Proof macOS arm64
     needs: build-macos-arm64
@@ -418,6 +456,7 @@ jobs:
       - build-macos-arm64
       - build-macos-x86_64
       - proof-linux-x64
+      - proof-linux-arm64
       - proof-macos-arm64
       - equivalence-gate
     runs-on: ubuntu-latest
