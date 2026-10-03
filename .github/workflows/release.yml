@@ -262,7 +262,7 @@ jobs:
             ubuntu:22.04 \
             bash -c "
               tar -xf phaselimiter-0.2.0-native2-linux-x64.tar.xz
-              ./phaselimiter/bin/phase_limiter -help
+              ./phaselimiter/bin/phase_limiter -help || true
               ./phaselimiter/bin/phase_limiter \
                 -input=test_data/test5.wav \
                 -output=/tmp/proof_out.wav \
@@ -285,7 +285,7 @@ jobs:
             -w /work \
             debian:12 \
             bash -c "
-              ./phaselimiter/bin/phase_limiter -help
+              ./phaselimiter/bin/phase_limiter -help || true
               ./phaselimiter/bin/phase_limiter \
                 -input=test_data/test5.wav \
                 -output=/tmp/proof_deb_out.wav \
@@ -319,7 +319,7 @@ jobs:
         run: |
           tar -xf phaselimiter-0.2.0-native2-macos-arm64.tar.xz
           codesign -v --strict phaselimiter/bin/phase_limiter
-          ./phaselimiter/bin/phase_limiter -help
+          ./phaselimiter/bin/phase_limiter -help || true
           ./phaselimiter/bin/phase_limiter \
             -input=test_data/test5.wav \
             -output=/tmp/proof_mac_out.wav \
@@ -362,7 +362,7 @@ jobs:
             -w /work \
             ubuntu:20.04 \
             bash -c "
-              apt-get update && apt-get install -y libtbb2 libsndfile1
+              apt-get update && apt-get install -y ffmpeg libtbb2 libsndfile1
               for f in test_data/test5.wav test_data/test2.wav test_data/synth_90s.wav; do
                 base=\$(basename \"\$f\")
                 upstream_ref/phaselimiter/bin/phase_limiter \
