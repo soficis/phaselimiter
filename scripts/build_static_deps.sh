@@ -128,13 +128,13 @@ TBB_SHA="3ad5dd08954b39d113dc5b3f8a8dc6dc1fd5250032b7c491eb07aed5c94133e1"
 )
 
 # 5. Boost 1.84.0
-BOOST_URL="https://boostorg.jfrog.io/artifactory/main/release/1.84.0/source/boost_1_84_0.tar.bz2"
-BOOST_SHA="71c32f4085e3adef4fffc90674a01079665d281d1de2aea6c6955db8567deae1"
+BOOST_URL="https://github.com/boostorg/boost/releases/download/boost-1.84.0/boost-1.84.0.tar.xz"
+BOOST_SHA="2e64e5d79a738d0fa6fb546c6e5c2bd28f88d268a2a080546f74e5ff98f29d0e"
 (
   cd "${BUILD_DIR}"
-  fetch_and_verify "${BOOST_URL}" "${BOOST_SHA}" "boost.tar.bz2"
-  tar -xjf "boost.tar.bz2"
-  cd boost_1_84_0
+  fetch_and_verify "${BOOST_URL}" "${BOOST_SHA}" "boost.tar.xz"
+  tar -xf "boost.tar.xz"
+  cd boost-1.84.0
   ./bootstrap.sh --prefix="${PREFIX}" --with-libraries=filesystem,iostreams,serialization
   ./b2 -j"${NPROC}" \
     --prefix="${PREFIX}" \
