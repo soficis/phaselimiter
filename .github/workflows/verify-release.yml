@@ -1,0 +1,185 @@
+name: Verify Published Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Published release tag to verify
+        default: v0.2.0-native3
+  push:
+    branches: [master]
+    paths:
+      - ".github/workflows/verify-release.yml"
+      - "scripts/equivalence_gate.py"
+
+permissions:
+  contents: read
+
+env:
+  TAG: ${{ inputs.tag || 'v0.2.0-native3' }}
+
+jobs:
+  reference:
+    name: Upstream IPP reference renders
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          sparse-checkout: |
+            test_data
+            scripts
+      - name: Download upstream reference release and published linux-x64 resources
+        run: |
+          curl -fsSL https://github.com/ai-mastering/phaselimiter/releases/download/v0.2.0/release.tar.xz -o upstream_release.tar.xz
+          mkdir -p upstream_ref
+          tar -xf upstream_release.tar.xz -C upstream_ref
+          curl -fL "https://github.com/soficis/phaselimiter/releases/download/${TAG}/phaselimiter-0.2.0-${TAG#v0.2.0-}-linux-x64.tar.xz" -o candidate.tar.xz
+          tar -xf candidate.tar.xz
+      - name: Generate synthetic 90s audio
+        run: |
+          python3 scripts/equivalence_gate.py --generate-test-audio test_data/synth_90s.wav
+      - name: Process audio with upstream reference in Ubuntu 20.04 container
+        run: |
+          mkdir -p ref_out tmp_ref
+          docker run --rm \
+            -v "$(pwd)":/work \
+            -w /work \
+            ubuntu:20.04 \
+            bash -c "
+              apt-get update && apt-get install -y ffmpeg libtbb2 libsndfile1
+              for f in test_data/test5.wav test_data/test2.wav test_data/synth_90s.wav; do
+                base=\$(basename \"\$f\")
+                upstream_ref/phaselimiter/bin/phase_limiter \
+                  -input=\"\$f\" \
+                  -output=\"ref_out/\$base\" \
+                  -mastering_reference_file=phaselimiter/resource/mastering_reference.json \
+                  -sound_quality2_cache=phaselimiter/resource/sound_quality2_cache \
+                  -disable_input_encode=true \
+                  -output_format=wav \
+                  -sample_rate=44100 \
+                  -bit_depth=16 \
+                  -ceiling=-0.1 \
+                  -mastering=true \
+                  -tmp=tmp_ref
+              done
+            "
+      - name: Stage reference renders and inputs
+        run: |
+          mkdir -p stage/ref_out stage/test_data
+          cp ref_out/test5.wav ref_out/test2.wav ref_out/synth_90s.wav stage/ref_out/
+          cp test_data/test5.wav test_data/test2.wav test_data/synth_90s.wav stage/test_data/
+      - name: Upload reference renders
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: reference-renders
+          path: stage
+
+  verify:
+    name: Verify ${{ matrix.key }}
+    needs: reference
+    runs-on: ${{ matrix.runner }}
+    container: ${{ matrix.container }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - key: linux-x64
+            runner: ubuntu-latest
+            container: ubuntu:22.04
+          - key: linux-arm64
+            runner: ubuntu-24.04-arm
+            container: ubuntu:22.04
+          - key: macos-arm64
+            runner: macos-15
+            container: ""
+          - key: macos-x86_64
+            runner: macos-15-intel
+            container: ""
+    steps:
+      - name: Install container tooling
+        if: matrix.container != ''
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends ca-certificates curl git xz-utils binutils
+      - name: Checkout gate script
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          sparse-checkout: scripts
+      - name: Download published asset and SHA256SUMS
+        run: |
+          ASSET="phaselimiter-0.2.0-${TAG#v0.2.0-}-${{ matrix.key }}.tar.xz"
+          BASE="https://github.com/soficis/phaselimiter/releases/download/${TAG}"
+          curl -fL "${BASE}/${ASSET}" -o "${ASSET}"
+          curl -fL "${BASE}/SHA256SUMS" -o SHA256SUMS
+          echo "ASSET=${ASSET}" >> "$GITHUB_ENV"
+      - name: Verify SHA-256
+        run: |
+          grep -F "  ${ASSET}" SHA256SUMS > asset.sha256
+          test "$(wc -l < asset.sha256)" -eq 1
+          case "${{ matrix.key }}" in
+            linux-*) sha256sum -c asset.sha256 ;;
+            *) shasum -a 256 -c asset.sha256 ;;
+          esac
+      - name: Extract and check package layout
+        run: |
+          tar -xf "${ASSET}"
+          test -f phaselimiter/bin/phase_limiter
+          test -f phaselimiter/resource/mastering_reference.json
+          N=$(find phaselimiter/licenses -type f -size +0 | wc -l)
+          echo "non-empty license files: ${N}"
+          test "${N}" -ge 14
+      - name: Portability check (Linux)
+        if: startsWith(matrix.key, 'linux-')
+        run: |
+          readelf -d phaselimiter/bin/phase_limiter | grep NEEDED
+          FORBIDDEN=$(readelf -d phaselimiter/bin/phase_limiter | grep NEEDED | grep -v -E "libc\.so\.6|libm\.so\.6|libpthread\.so\.0|libdl\.so\.2|librt\.so\.1|libstdc\+\+\.so\.6|libgcc_s\.so\.1|ld-linux" || true)
+          if [ -n "$FORBIDDEN" ]; then
+            echo "ERROR: Unapproved dynamic libraries found: $FORBIDDEN"
+            exit 1
+          fi
+      - name: Portability check (macOS)
+        if: startsWith(matrix.key, 'macos-')
+        run: |
+          otool -L phaselimiter/bin/phase_limiter
+          FORBIDDEN=$(otool -L phaselimiter/bin/phase_limiter | tail -n +2 | awk '{print $1}' | grep -v -E "^/usr/lib/|^/System/" || true)
+          if [ -n "$FORBIDDEN" ]; then
+            echo "ERROR: Third-party dylib detected: $FORBIDDEN"
+            exit 1
+          fi
+          codesign -v --strict phaselimiter/bin/phase_limiter
+      - name: Install ffmpeg and python3 (Linux)
+        if: startsWith(matrix.key, 'linux-')
+        run: apt-get install -y --no-install-recommends ffmpeg python3
+      - name: Install ffmpeg (macOS)
+        if: startsWith(matrix.key, 'macos-')
+        run: brew install ffmpeg
+      - name: Download reference renders
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: reference-renders
+          path: refs
+      - name: Render inputs with the published binary
+        run: |
+          mkdir -p cand_out tmp_cand
+          for f in test5 test2 synth_90s; do
+            ./phaselimiter/bin/phase_limiter \
+              -input="refs/test_data/${f}.wav" \
+              -output="cand_out/${f}.wav" \
+              -mastering_reference_file=phaselimiter/resource/mastering_reference.json \
+              -sound_quality2_cache=phaselimiter/resource/sound_quality2_cache \
+              -disable_input_encode=true \
+              -output_format=wav \
+              -sample_rate=44100 \
+              -bit_depth=16 \
+              -ceiling=-0.1 \
+              -mastering=true \
+              -tmp=tmp_cand
+          done
+      - name: Equivalence gate against the IPP reference
+        run: |
+          python3 scripts/equivalence_gate.py \
+            --compare-pairs \
+            refs/ref_out/test5.wav cand_out/test5.wav \
+            refs/ref_out/test2.wav cand_out/test2.wav \
+            refs/ref_out/synth_90s.wav cand_out/synth_90s.wav
